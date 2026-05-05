@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boston · Field Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --paper:        #f4ede0;
+  --paper-deep:   #ebe1ce;
+  --ink:          #1c1614;
+  --muted:        #7a6e62;
+  --rule:         #d6c9b1;
+  --brick:        #a83232;
+  --brick-deep:   #7d2222;
+  --navy:         #1f3a5f;
+  --done:         #4a6b3a;
+  --gold:         #c79030;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font-family: "Inter Tight", -apple-system, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  background-image:
+    radial-gradient(circle at 25% 20%, rgba(168,50,50,.04) 0, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(31,58,95,.04) 0, transparent 40%);
+}
+
+/* subtle paper grain */
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  opacity: .35;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.08  0 0 0 0 0.06  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+#app {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  height: 100vh;
+}
+
+#sidebar {
+  overflow-y: auto;
+  border-right: 1px solid var(--rule);
+  padding: 28px 26px 40px;
+  background: linear-gradient(180deg, var(--paper) 0%, var(--paper-deep) 100%);
+  position: relative;
+}
+#sidebar::after {
+  /* a thin red ribbon down the left */
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: linear-gradient(180deg, var(--brick) 0%, var(--brick-deep) 100%);
+}
+
+#map {
+  height: 100%;
+  filter: saturate(.85) contrast(1.02);
+}
+
+/* HEADER */
+.eyebrow {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--brick);
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+}
+h1 {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 38px;
+  line-height: 1;
+  margin: 0;
+  letter-spacing: -.02em;
+}
+h1 em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--brick-deep);
+}
+.dateline {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 8px 0 22px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+/* PROGRESS */
+.progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.progress {
+  flex: 1;
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  border-radius: 1px;
+  height: 6px;
+  overflow: hidden;
+}
+.progress > div {
+  background: linear-gradient(90deg, var(--brick) 0%, var(--brick-deep) 100%);
+  height: 100%;
+  width: 0;
+  transition: width .5s cubic-bezier(.2,.8,.2,1);
+}
+.progress-count {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+/* NEXT CARD */
+.next-card {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  position: relative;
+  border-radius: 2px;
+  box-shadow: 4px 4px 0 var(--brick);
+}
+.next-card .label {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 11px;
+  color: var(--gold);
+  text-transform: uppercase;
+  letter-spacing: .15em;
+  margin-bottom: 4px;
+}
+.next-card .name {
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -.01em;
+}
+.next-card .meta {
+  font-size: 12px;
+  color: rgba(244,237,224,.7);
+  margin-top: 6px;
+}
+.done-btn {
+  margin-top: 10px;
+  background: var(--brick);
+  color: var(--paper);
+  border: 0;
+  padding: 8px 14px;
+  font-family: "Inter Tight", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border-radius: 1px;
+  transition: background .15s;
+}
+.done-btn:hover { background: var(--brick-deep); }
+.done-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* MODE TOGGLE */
+.toggle {
+  display: flex;
+  border: 1px solid var(--ink);
+  border-radius: 1px;
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.toggle button {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  padding: 9px 0;
+  font-family: "Inter Tight", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  cursor: pointer;
+  color: var(--ink);
+  transition: all .15s;
+}
+.toggle button:not(:last-child) { border-right: 1px solid var(--ink); }
+.toggle button.active { background: var(--ink); color: var(--paper); }
+
+/* SECTION TITLES */
+.section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 12px;
+}
+.section-title {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--brick-deep);
+  letter-spacing: .02em;
+}
+.section-rule {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+
+/* STOPS LIST */
+.stop {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 8px;
+  cursor: pointer;
+  transition: background .12s;
+  border-radius: 2px;
+  position: relative;
+}
+.stop:hover { background: rgba(168,50,50,.06); }
+.stop.current {
+  background: rgba(168,50,50,.1);
+  outline: 1px solid var(--brick);
+  outline-offset: -1px;
+}
+.stop.done .name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
+
+.num {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--paper);
+  border: 1.5px solid var(--brick);
+  color: var(--brick-deep);
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.stop.current .num {
+  background: var(--brick);
+  color: var(--paper);
+  box-shadow: 0 0 0 4px rgba(168,50,50,.15);
+}
+.stop.done .num {
+  background: var(--done);
+  border-color: var(--done);
+  color: var(--paper);
+}
+.stop .body { flex: 1; min-width: 0; }
+.stop .name {
+  font-family: "Fraunces", serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: -.005em;
+  line-height: 1.2;
+}
+.stop .leg {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+  font-style: italic;
+  font-family: "Fraunces", serif;
+}
+.stop .leg::before { content: "→ "; color: var(--brick); font-style: normal; }
+
+/* RESTAURANTS */
+.restaurant {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  margin-bottom: 6px;
+  border-radius: 1px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.restaurant:hover { border-color: var(--gold); }
+.restaurant .r-name {
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 14px;
+}
+.restaurant .r-addr {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.restaurant .r-del {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 18px;
+  padding: 0 4px;
+  line-height: 1;
+}
+.restaurant .r-del:hover { color: var(--brick); }
+.empty {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 0;
+}
+
+.add-btn {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  background: var(--navy);
+  color: var(--paper);
+  border: 0;
+  border-radius: 1px;
+  font-family: "Inter Tight", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background .15s;
+}
+.add-btn:hover { background: #142840; }
+
+.reset-btn {
+  margin-top: 18px;
+  background: transparent;
+  border: 1px dashed var(--rule);
+  width: 100%;
+  padding: 8px;
+  border-radius: 1px;
+  cursor: pointer;
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--muted);
+  transition: all .15s;
+}
+.reset-btn:hover { color: var(--brick); border-color: var(--brick); }
+
+/* DIALOG */
+dialog {
+  border: 0;
+  border-radius: 2px;
+  padding: 28px;
+  width: 360px;
+  max-width: 90vw;
+  background: var(--paper);
+  box-shadow: 6px 6px 0 var(--brick), 0 20px 60px rgba(0,0,0,.25);
+  font-family: "Inter Tight", sans-serif;
+}
+dialog::backdrop { background: rgba(28,22,20,.5); backdrop-filter: blur(2px); }
+dialog h3 {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 24px;
+  margin: 0 0 4px;
+  letter-spacing: -.01em;
+}
+dialog .dialog-sub {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 18px;
+}
+dialog label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+dialog input {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  border-radius: 1px;
+  font-family: "Inter Tight", sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+}
+dialog input:focus { outline: none; border-color: var(--brick); }
+dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
+dialog button {
+  padding: 9px 16px;
+  border-radius: 1px;
+  border: 0;
+  cursor: pointer;
+  font-family: "Inter Tight", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.btn-secondary { background: transparent; border: 1px solid var(--rule); color: var(--ink); }
+.btn-secondary:hover { border-color: var(--ink); }
+.btn-primary { background: var(--brick); color: var(--paper); }
+.btn-primary:hover { background: var(--brick-deep); }
+.dialog-msg { font-size: 12px; margin-top: 10px; min-height: 16px; font-family: "Fraunces", serif; font-style: italic; }
+.dialog-msg.error { color: var(--brick); }
+.dialog-msg.info { color: var(--muted); }
+
+/* MAP MARKER POPUP */
+.leaflet-popup-content-wrapper {
+  border-radius: 2px;
+  background: var(--paper);
+  box-shadow: 3px 3px 0 var(--brick);
+}
+.leaflet-popup-content {
+  font-family: "Inter Tight", sans-serif;
+  font-size: 13px;
+  margin: 12px 14px;
+}
+.leaflet-popup-content b {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 15px;
+}
+.leaflet-popup-tip { background: var(--paper); }
+
+/* MOBILE */
+@media (max-width: 760px) {
+  #app { grid-template-columns: 1fr; grid-template-rows: 55vh 45vh; }
+  #sidebar { border-right: 0; border-bottom: 1px solid var(--rule); padding: 20px; }
+  #sidebar::after { width: 0; height: 4px; bottom: auto; right: 0; top: 0; left: 0; background: var(--brick); }
+  h1 { font-size: 28px; }
+  #app { grid-template-rows: auto 50vh; }
+  #map { min-height: 400px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="eyebrow">A field guide to</div>
+    <h1>Boston, <em>on foot</em></h1>
+    <div class="dateline">May 2026 · Three days</div>
+
+    <div class="progress-wrap">
+      <div class="progress"><div id="progress-bar"></div></div>
+      <div class="progress-count" id="progress-count">0 / 13</div>
+    </div>
+
+    <div class="next-card">
+      <div class="label">Up Next</div>
+      <div class="name" id="next-name">—</div>
+      <div class="meta" id="next-meta">—</div>
+      <button class="done-btn" id="mark-done">Mark as done</button>
+    </div>
+
+    <div class="toggle">
+      <button class="active" data-mode="foot">On foot</button>
+      <button data-mode="driving">Driving</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">The Itinerary</div>
+      <div class="section-rule"></div>
+    </div>
+    <div id="stops-list"></div>
+
+    <div class="section">
+      <div class="section-title">Tables &amp; Taverns</div>
+      <div class="section-rule"></div>
+    </div>
+    <div id="restaurants-list"></div>
+    <button class="add-btn" id="add-restaurant">+ Add a Restaurant</button>
+
+    <button class="reset-btn" id="reset-btn">Reset progress &amp; clear restaurants</button>
+  </aside>
+  <div id="map"></div>
+</div>
+
+<dialog id="restaurant-dialog">
+  <h3>Add a Place</h3>
+  <div class="dialog-sub">A spot worth marking on the map.</div>
+  <label for="r-name">Name</label>
+  <input id="r-name" placeholder="e.g. Mike's Pastry" autocomplete="off">
+  <label for="r-address">Address or neighborhood (Boston)</label>
+  <input id="r-address" placeholder="e.g. 300 Hanover St" autocomplete="off">
+  <div class="row">
+    <button class="btn-secondary" id="r-cancel" type="button">Cancel</button>
+    <button class="btn-primary" id="r-save" type="button">Save</button>
+  </div>
+  <div class="dialog-msg" id="r-msg"></div>
+</dialog>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ===========================================================
+   Boston trip — edit STOPS to fine-tune any pin's coordinates.
+   The "Bourne" starting point is a placeholder — drop your
+   real address coordinates in there. (Hint: right-click any
+   spot on Google Maps → click the lat,lng to copy.)
+   =========================================================== */
+const STOPS = [
+  { name: "Bourne (start)",                    lat: 42.3505, lng: -71.0950, note: "Update with your starting address" },
+  { name: "Isabella Stewart Gardner Museum",   lat: 42.3389, lng: -71.0995 },
+  { name: "Christian Science Plaza",           lat: 42.3437, lng: -71.0857 },
+  { name: "Newbury Street",                    lat: 42.3503, lng: -71.0810 },
+  { name: "Boston Public Library",             lat: 42.3492, lng: -71.0780 },
+  { name: "Beacon Hill",                       lat: 42.3588, lng: -71.0707 },
+  { name: "Acorn Street",                      lat: 42.3585, lng: -71.0678 },
+  { name: "Brattle Book Shop",                 lat: 42.3551, lng: -71.0625 },
+  { name: "Chinatown",                         lat: 42.3508, lng: -71.0623 },
+  { name: "Quincy Market",                     lat: 42.3601, lng: -71.0547 },
+  { name: "Freedom Trail (Boston Common)",     lat: 42.3550, lng: -71.0656 },
+  { name: "USS Constitution",                  lat: 42.3724, lng: -71.0563 },
+  { name: "Harvard University",                lat: 42.3744, lng: -71.1169 }
+];
+
+const STORAGE_KEY = "boston-trip-v1";
+let state = loadState();
+let mode = state.mode || "foot";
+let map, stopMarkers = [], restaurantMarkers = [], pathLine;
+const legCache = {}; // key: "i-mode" -> seconds
+
+/* ---------- persistence ---------- */
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { done: [], restaurants: [] }; }
+  catch { return { done: [], restaurants: [] }; }
+}
+function saveState() {
+  state.mode = mode;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+}
+
+/* ---------- map setup ---------- */
+function initMap() {
+  map = L.map("map", { zoomControl: true }).setView([42.36, -71.075], 13);
+  // Carto Voyager — softer, more illustrated than default OSM
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">Carto</a>',
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+
+  drawPath();
+  drawStops();
+  drawRestaurants();
+  fitBounds();
+}
+
+function numberedIcon(n, done, current) {
+  const bg = done ? "#4a6b3a" : current ? "#a83232" : "#f4ede0";
+  const fg = (done || current) ? "#f4ede0" : "#7d2222";
+  const ring = current ? "box-shadow:0 0 0 6px rgba(168,50,50,.2);" : "";
+  const label = done ? "✓" : n;
+  const html = `<div style="background:${bg};color:${fg};border:1.5px solid #7d2222;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:14px;${ring}">${label}</div>`;
+  return L.divIcon({ html, className: "", iconSize: [30, 30], iconAnchor: [15, 15] });
+}
+
+function restaurantIcon() {
+  const html = `<div style="background:#c79030;color:#1c1614;border:1.5px solid #1c1614;border-radius:2px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:13px;transform:rotate(-4deg);box-shadow:1px 2px 0 rgba(0,0,0,.3)">✦</div>`;
+  return L.divIcon({ html, className: "", iconSize: [24, 24], iconAnchor: [12, 12] });
+}
+
+function drawStops() {
+  stopMarkers.forEach(m => map.removeLayer(m));
+  stopMarkers = [];
+  const currentIdx = nextStopIndex();
+  STOPS.forEach((s, i) => {
+    const done = state.done.includes(i);
+    const m = L.marker([s.lat, s.lng], {
+      icon: numberedIcon(i + 1, done, i === currentIdx),
+      zIndexOffset: i === currentIdx ? 1000 : (done ? 0 : 100)
+    }).addTo(map).bindPopup(`<b>${i + 1}. ${s.name}</b>${s.note ? `<br><small><i>${s.note}</i></small>` : ""}`);
+    stopMarkers.push(m);
+  });
+}
+
+function drawPath() {
+  if (pathLine) map.removeLayer(pathLine);
+  const coords = STOPS.map(s => [s.lat, s.lng]);
+  pathLine = L.polyline(coords, {
+    color: "#a83232",
+    weight: 2.5,
+    opacity: .65,
+    dashArray: "2 8",
+    lineCap: "round"
+  }).addTo(map);
+}
+
+function drawRestaurants() {
+  restaurantMarkers.forEach(m => map.removeLayer(m));
+  restaurantMarkers = [];
+  state.restaurants.forEach(r => {
+    const m = L.marker([r.lat, r.lng], { icon: restaurantIcon() })
+      .addTo(map)
+      .bindPopup(`<b>${r.name}</b><br><small>${r.address}</small>`);
+    restaurantMarkers.push(m);
+  });
+}
+
+function fitBounds() {
+  const pts = STOPS.map(s => [s.lat, s.lng]).concat(state.restaurants.map(r => [r.lat, r.lng]));
+  const bounds = L.latLngBounds(pts);
+  map.fitBounds(bounds, { padding: [40, 40] });
+}
+
+/* ---------- routing ---------- */
+function nextStopIndex() {
+  for (let i = 0; i < STOPS.length; i++) if (!state.done.includes(i)) return i;
+  return -1;
+}
+
+function fmtTime(seconds) {
+  if (seconds == null) return "—";
+  const mins = Math.round(seconds / 60);
+  if (mins < 1) return "<1 min";
+  if (mins < 60) return `${mins} min`;
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+}
+
+async function fetchLeg(i) {
+  const key = `${i}-${mode}`;
+  if (legCache[key] != null) return legCache[key];
+  const a = STOPS[i], b = STOPS[i + 1];
+  const url = `https://router.project-osrm.org/route/v1/${mode}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      legCache[key] = data.routes[0].duration;
+      return legCache[key];
+    }
+  } catch (e) { /* ignore, fall through */ }
+  // fallback: rough estimate by haversine distance
+  const km = haversine(a, b);
+  legCache[key] = km * (mode === "foot" ? 720 : 90);
+  return legCache[key];
+}
+
+function haversine(a, b) {
+  const R = 6371;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const x = Math.sin(dLat/2) ** 2
+    + Math.cos(a.lat * Math.PI/180) * Math.cos(b.lat * Math.PI/180) * Math.sin(dLng/2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+
+/* ---------- rendering ---------- */
+async function renderList() {
+  const list = document.getElementById("stops-list");
+  list.innerHTML = "";
+  const currentIdx = nextStopIndex();
+
+  STOPS.forEach((s, i) => {
+    const done = state.done.includes(i);
+    const isCurrent = i === currentIdx;
+    const div = document.createElement("div");
+    div.className = `stop ${done ? "done" : ""} ${isCurrent ? "current" : ""}`;
+    div.innerHTML = `
+      <div class="num">${done ? "✓" : i + 1}</div>
+      <div class="body">
+        <div class="name">${s.name}</div>
+        <div class="leg" id="leg-${i}"></div>
+      </div>
+    `;
+    div.addEventListener("click", () => {
+      map.setView([s.lat, s.lng], 16, { animate: true });
+      stopMarkers[i].openPopup();
+    });
+    div.addEventListener("dblclick", () => toggleDone(i));
+    list.appendChild(div);
+  });
+
+  // progress
+  const pct = (state.done.length / STOPS.length) * 100;
+  document.getElementById("progress-bar").style.width = pct + "%";
+  document.getElementById("progress-count").textContent = `${state.done.length} / ${STOPS.length}`;
+
+  // next card
+  const nextNameEl = document.getElementById("next-name");
+  const nextMetaEl = document.getElementById("next-meta");
+  const doneBtn = document.getElementById("mark-done");
+  if (currentIdx === -1) {
+    nextNameEl.textContent = "Trip complete";
+    nextMetaEl.textContent = `All ${STOPS.length} stops checked off — well done.`;
+    doneBtn.disabled = true;
+    doneBtn.textContent = "All Done";
+  } else {
+    nextNameEl.textContent = STOPS[currentIdx].name;
+    nextMetaEl.textContent = `Stop ${currentIdx + 1} of ${STOPS.length}`;
+    doneBtn.disabled = false;
+    doneBtn.textContent = "Mark as done";
+  }
+
+  // populate leg times async
+  for (let i = 0; i < STOPS.length - 1; i++) {
+    const t = await fetchLeg(i);
+    const el = document.getElementById(`leg-${i}`);
+    if (el) el.textContent = `${fmtTime(t)} ${mode === "foot" ? "walk" : "drive"}`;
+  }
+}
+
+function toggleDone(i) {
+  const idx = state.done.indexOf(i);
+  if (idx >= 0) state.done.splice(idx, 1);
+  else state.done.push(i);
+  saveState();
+  drawStops();
+  renderList();
+}
+
+function renderRestaurants() {
+  const wrap = document.getElementById("restaurants-list");
+  wrap.innerHTML = "";
+  if (state.restaurants.length === 0) {
+    wrap.innerHTML = '<div class="empty">No spots saved yet.</div>';
+    return;
+  }
+  state.restaurants.forEach((r, i) => {
+    const div = document.createElement("div");
+    div.className = "restaurant";
+    div.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div class="r-name">${escapeHtml(r.name)}</div>
+        <div class="r-addr">${escapeHtml(r.address)}</div>
+      </div>
+      <button class="r-del" title="Remove" type="button">×</button>
+    `;
+    div.querySelector(".r-del").addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.restaurants.splice(i, 1);
+      saveState();
+      drawRestaurants();
+      renderRestaurants();
+    });
+    div.addEventListener("click", () => map.setView([r.lat, r.lng], 16, { animate: true }));
+    wrap.appendChild(div);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+}
+
+/* ---------- geocoding ---------- */
+async function geocode(query) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Boston, MA")}&limit=1`;
+  try {
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+    if (data && data[0]) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {}
+  return null;
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll(".toggle button").forEach(b => {
+  b.addEventListener("click", () => {
+    document.querySelectorAll(".toggle button").forEach(x => x.classList.remove("active"));
+    b.classList.add("active");
+    mode = b.dataset.mode;
+    saveState();
+    renderList();
+  });
+});
+
+document.getElementById("mark-done").addEventListener("click", () => {
+  const i = nextStopIndex();
+  if (i === -1) return;
+  state.done.push(i);
+  saveState();
+  drawStops();
+  renderList();
+});
+
+document.getElementById("add-restaurant").addEventListener("click", () => {
+  document.getElementById("r-name").value = "";
+  document.getElementById("r-address").value = "";
+  const msg = document.getElementById("r-msg");
+  msg.textContent = ""; msg.className = "dialog-msg";
+  document.getElementById("restaurant-dialog").showModal();
+});
+
+document.getElementById("r-cancel").addEventListener("click", () => {
+  document.getElementById("restaurant-dialog").close();
+});
+
+document.getElementById("r-save").addEventListener("click", async () => {
+  const name = document.getElementById("r-name").value.trim();
+  const address = document.getElementById("r-address").value.trim();
+  const msg = document.getElementById("r-msg");
+  if (!name || !address) {
+    msg.textContent = "Both name and address are required.";
+    msg.className = "dialog-msg error";
+    return;
+  }
+  msg.textContent = "Looking up the address…";
+  msg.className = "dialog-msg info";
+  const coords = await geocode(address);
+  if (!coords) {
+    msg.textContent = "Couldn't find that address. Try being more specific.";
+    msg.className = "dialog-msg error";
+    return;
+  }
+  state.restaurants.push({ name, address, ...coords });
+  saveState();
+  drawRestaurants();
+  renderRestaurants();
+  document.getElementById("restaurant-dialog").close();
+});
+
+document.getElementById("reset-btn").addEventListener("click", () => {
+  if (!confirm("Clear all progress and remove all saved restaurants?")) return;
+  state = { done: [], restaurants: [] };
+  saveState();
+  drawStops();
+  drawRestaurants();
+  renderList();
+  renderRestaurants();
+});
+
+/* ---------- init ---------- */
+initMap();
+renderList();
+renderRestaurants();
+document.querySelectorAll(".toggle button").forEach(b => {
+  b.classList.toggle("active", b.dataset.mode === mode);
+});
+</script>
+</body>
+</html>
