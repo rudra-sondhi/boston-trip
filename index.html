@@ -4,10 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Boston · Field Notes</title>
+ 
+<!--
+  No API keys, no billing.
+  Map tiles: OpenStreetMap via Carto.
+  Routing & travel times: OSRM public demo router.
+  Restaurant address lookup: OSM Nominatim.
+  Navigation links: open Google Maps in a new tab (no key needed).
+  Just push to GitHub Pages and you're done.
+-->
+ 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+ 
 <style>
 :root {
   --paper:        #f4ede0;
@@ -21,33 +32,28 @@
   --done:         #4a6b3a;
   --gold:         #c79030;
 }
-
+ 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; }
 body {
   font-family: "Inter Tight", -apple-system, sans-serif;
   color: var(--ink);
   background: var(--paper);
-  background-image:
-    radial-gradient(circle at 25% 20%, rgba(168,50,50,.04) 0, transparent 40%),
-    radial-gradient(circle at 80% 80%, rgba(31,58,95,.04) 0, transparent 40%);
 }
-
-/* subtle paper grain */
+ 
 body::before {
-  content: "";
-  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9999;
   opacity: .35;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1  0 0 0 0 0.08  0 0 0 0 0.06  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
   mix-blend-mode: multiply;
 }
-
+ 
 #app {
   display: grid;
   grid-template-columns: 400px 1fr;
   height: 100vh;
 }
-
+ 
 #sidebar {
   overflow-y: auto;
   border-right: 1px solid var(--rule);
@@ -56,372 +62,222 @@ body::before {
   position: relative;
 }
 #sidebar::after {
-  /* a thin red ribbon down the left */
   content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
   background: linear-gradient(180deg, var(--brick) 0%, var(--brick-deep) 100%);
 }
-
+ 
 #map {
   height: 100%;
-  filter: saturate(.85) contrast(1.02);
+  filter: saturate(.9) contrast(1.02);
 }
-
-/* HEADER */
+ 
 .eyebrow {
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 13px;
-  color: var(--brick);
-  letter-spacing: .02em;
-  margin-bottom: 4px;
+  font-family: "Fraunces", serif; font-style: italic; font-size: 13px;
+  color: var(--brick); letter-spacing: .02em; margin-bottom: 4px;
 }
 h1 {
-  font-family: "Fraunces", serif;
-  font-weight: 600;
-  font-size: 38px;
-  line-height: 1;
-  margin: 0;
-  letter-spacing: -.02em;
+  font-family: "Fraunces", serif; font-weight: 600; font-size: 38px;
+  line-height: 1; margin: 0; letter-spacing: -.02em;
 }
-h1 em {
-  font-style: italic;
-  font-weight: 500;
-  color: var(--brick-deep);
-}
+h1 em { font-style: italic; font-weight: 500; color: var(--brick-deep); }
 .dateline {
-  font-size: 12px;
-  color: var(--muted);
-  margin: 8px 0 22px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
+  font-size: 12px; color: var(--muted); margin: 8px 0 22px;
+  letter-spacing: .12em; text-transform: uppercase;
 }
-
-/* PROGRESS */
-.progress-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 18px;
-}
+ 
+.progress-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
 .progress {
-  flex: 1;
-  background: var(--paper-deep);
-  border: 1px solid var(--rule);
-  border-radius: 1px;
-  height: 6px;
-  overflow: hidden;
+  flex: 1; background: var(--paper-deep); border: 1px solid var(--rule);
+  border-radius: 1px; height: 6px; overflow: hidden;
 }
 .progress > div {
   background: linear-gradient(90deg, var(--brick) 0%, var(--brick-deep) 100%);
-  height: 100%;
-  width: 0;
-  transition: width .5s cubic-bezier(.2,.8,.2,1);
+  height: 100%; width: 0; transition: width .5s cubic-bezier(.2,.8,.2,1);
 }
 .progress-count {
-  font-family: "Fraunces", serif;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--ink);
+  font-family: "Fraunces", serif; font-weight: 600; font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
-
-/* NEXT CARD */
+ 
 .next-card {
-  background: var(--ink);
-  color: var(--paper);
-  padding: 16px 18px;
-  margin-bottom: 18px;
-  position: relative;
-  border-radius: 2px;
+  background: var(--ink); color: var(--paper); padding: 16px 18px;
+  margin-bottom: 18px; position: relative; border-radius: 2px;
   box-shadow: 4px 4px 0 var(--brick);
 }
 .next-card .label {
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 11px;
-  color: var(--gold);
-  text-transform: uppercase;
-  letter-spacing: .15em;
+  font-family: "Fraunces", serif; font-style: italic; font-size: 11px;
+  color: var(--gold); text-transform: uppercase; letter-spacing: .15em;
   margin-bottom: 4px;
 }
 .next-card .name {
-  font-family: "Fraunces", serif;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -.01em;
+  font-family: "Fraunces", serif; font-size: 22px; font-weight: 600;
+  line-height: 1.1; letter-spacing: -.01em;
 }
 .next-card .meta {
-  font-size: 12px;
-  color: rgba(244,237,224,.7);
-  margin-top: 6px;
+  font-size: 12px; color: rgba(244,237,224,.7); margin-top: 6px;
 }
-.done-btn {
-  margin-top: 10px;
-  background: var(--brick);
-  color: var(--paper);
-  border: 0;
-  padding: 8px 14px;
-  font-family: "Inter Tight", sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border-radius: 1px;
-  transition: background .15s;
+.next-actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.btn-pill {
+  background: var(--brick); color: var(--paper); border: 0;
+  padding: 8px 14px; font-family: "Inter Tight", sans-serif; font-size: 12px;
+  font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; border-radius: 1px; transition: background .15s;
+  text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
 }
-.done-btn:hover { background: var(--brick-deep); }
-.done-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-/* MODE TOGGLE */
+.btn-pill:hover { background: var(--brick-deep); }
+.btn-pill:disabled { opacity: .4; cursor: not-allowed; }
+.btn-pill.outline {
+  background: transparent; color: var(--paper);
+  border: 1px solid rgba(244,237,224,.3);
+}
+.btn-pill.outline:hover { border-color: var(--gold); color: var(--gold); }
+ 
 .toggle {
-  display: flex;
-  border: 1px solid var(--ink);
-  border-radius: 1px;
-  margin-bottom: 24px;
-  overflow: hidden;
+  display: flex; border: 1px solid var(--ink); border-radius: 1px;
+  margin-bottom: 24px; overflow: hidden;
 }
 .toggle button {
-  flex: 1;
-  background: transparent;
-  border: 0;
-  padding: 9px 0;
-  font-family: "Inter Tight", sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: .15em;
-  text-transform: uppercase;
-  cursor: pointer;
-  color: var(--ink);
-  transition: all .15s;
+  flex: 1; background: transparent; border: 0; padding: 9px 0;
+  font-family: "Inter Tight", sans-serif; font-size: 11px; font-weight: 500;
+  letter-spacing: .15em; text-transform: uppercase; cursor: pointer;
+  color: var(--ink); transition: all .15s;
 }
 .toggle button:not(:last-child) { border-right: 1px solid var(--ink); }
 .toggle button.active { background: var(--ink); color: var(--paper); }
-
-/* SECTION TITLES */
-.section {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 24px 0 12px;
-}
+ 
+.section { display: flex; align-items: center; gap: 10px; margin: 24px 0 12px; }
 .section-title {
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 14px;
-  color: var(--brick-deep);
-  letter-spacing: .02em;
+  font-family: "Fraunces", serif; font-style: italic; font-size: 14px;
+  color: var(--brick-deep); letter-spacing: .02em;
 }
-.section-rule {
-  flex: 1;
-  height: 1px;
-  background: var(--rule);
-}
-
-/* STOPS LIST */
+.section-rule { flex: 1; height: 1px; background: var(--rule); }
+ 
 .stop {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 8px;
-  cursor: pointer;
-  transition: background .12s;
-  border-radius: 2px;
-  position: relative;
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 10px 8px; cursor: pointer; transition: background .12s;
+  border-radius: 2px; position: relative;
 }
 .stop:hover { background: rgba(168,50,50,.06); }
 .stop.current {
   background: rgba(168,50,50,.1);
-  outline: 1px solid var(--brick);
-  outline-offset: -1px;
+  outline: 1px solid var(--brick); outline-offset: -1px;
 }
 .stop.done .name { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; }
-
+ 
 .num {
-  width: 28px; height: 28px;
-  border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: grid; place-items: center;
-  background: var(--paper);
-  border: 1.5px solid var(--brick);
-  color: var(--brick-deep);
-  font-family: "Fraunces", serif;
-  font-weight: 600;
-  font-size: 13px;
-  flex-shrink: 0;
+  background: var(--paper); border: 1.5px solid var(--brick);
+  color: var(--brick-deep); font-family: "Fraunces", serif;
+  font-weight: 600; font-size: 13px; flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
 .stop.current .num {
-  background: var(--brick);
-  color: var(--paper);
+  background: var(--brick); color: var(--paper);
   box-shadow: 0 0 0 4px rgba(168,50,50,.15);
 }
 .stop.done .num {
-  background: var(--done);
-  border-color: var(--done);
-  color: var(--paper);
+  background: var(--done); border-color: var(--done); color: var(--paper);
 }
 .stop .body { flex: 1; min-width: 0; }
 .stop .name {
-  font-family: "Fraunces", serif;
-  font-size: 16px;
-  font-weight: 500;
-  letter-spacing: -.005em;
-  line-height: 1.2;
+  font-family: "Fraunces", serif; font-size: 16px; font-weight: 500;
+  letter-spacing: -.005em; line-height: 1.2;
 }
 .stop .leg {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 4px;
-  font-style: italic;
+  display: inline-block; margin-top: 4px;
+  font-size: 11px; color: var(--muted); font-style: italic;
   font-family: "Fraunces", serif;
+  text-decoration: none; border-bottom: 1px dashed transparent;
+  transition: all .12s;
 }
 .stop .leg::before { content: "→ "; color: var(--brick); font-style: normal; }
-
-/* RESTAURANTS */
+a.leg:hover { color: var(--brick); border-bottom-color: var(--brick); }
+a.leg::after { content: " ↗"; font-size: 9px; opacity: .6; }
+ 
 .restaurant {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  background: var(--paper);
-  border: 1px solid var(--rule);
-  margin-bottom: 6px;
-  border-radius: 1px;
-  cursor: pointer;
-  transition: border-color .15s;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; background: var(--paper); border: 1px solid var(--rule);
+  margin-bottom: 6px; border-radius: 1px; cursor: pointer;
+  transition: border-color .15s; gap: 6px;
 }
 .restaurant:hover { border-color: var(--gold); }
 .restaurant .r-name {
-  font-family: "Fraunces", serif;
-  font-weight: 500;
-  font-size: 14px;
+  font-family: "Fraunces", serif; font-weight: 500; font-size: 14px;
 }
-.restaurant .r-addr {
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 2px;
+.restaurant .r-addr { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.restaurant .r-actions { display: flex; gap: 4px; align-items: center; }
+.restaurant a.r-dir, .restaurant button.r-del {
+  background: transparent; border: 0; cursor: pointer; color: var(--muted);
+  font-size: 14px; padding: 2px 6px; line-height: 1;
+  text-decoration: none; border-radius: 1px;
 }
-.restaurant .r-del {
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 18px;
-  padding: 0 4px;
-  line-height: 1;
-}
-.restaurant .r-del:hover { color: var(--brick); }
+.restaurant a.r-dir:hover { color: var(--gold); }
+.restaurant button.r-del:hover { color: var(--brick); }
 .empty {
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 12px;
-  color: var(--muted);
-  padding: 6px 0;
+  font-family: "Fraunces", serif; font-style: italic;
+  font-size: 12px; color: var(--muted); padding: 6px 0;
 }
-
+ 
 .add-btn {
-  display: block;
-  width: 100%;
-  padding: 11px;
-  background: var(--navy);
-  color: var(--paper);
-  border: 0;
-  border-radius: 1px;
-  font-family: "Inter Tight", sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background .15s;
+  display: block; width: 100%; padding: 11px;
+  background: var(--navy); color: var(--paper); border: 0; border-radius: 1px;
+  font-family: "Inter Tight", sans-serif; font-size: 12px; font-weight: 500;
+  letter-spacing: .12em; text-transform: uppercase; cursor: pointer;
+  margin-top: 10px; transition: background .15s;
 }
 .add-btn:hover { background: #142840; }
-
+ 
 .reset-btn {
-  margin-top: 18px;
-  background: transparent;
-  border: 1px dashed var(--rule);
-  width: 100%;
-  padding: 8px;
-  border-radius: 1px;
-  cursor: pointer;
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 12px;
-  color: var(--muted);
-  transition: all .15s;
+  margin-top: 18px; background: transparent; border: 1px dashed var(--rule);
+  width: 100%; padding: 8px; border-radius: 1px; cursor: pointer;
+  font-family: "Fraunces", serif; font-style: italic; font-size: 12px;
+  color: var(--muted); transition: all .15s;
 }
 .reset-btn:hover { color: var(--brick); border-color: var(--brick); }
-
-/* DIALOG */
+ 
 dialog {
-  border: 0;
-  border-radius: 2px;
-  padding: 28px;
-  width: 360px;
-  max-width: 90vw;
-  background: var(--paper);
+  border: 0; border-radius: 2px; padding: 28px; width: 360px; max-width: 90vw;
+  background: var(--paper); font-family: "Inter Tight", sans-serif;
   box-shadow: 6px 6px 0 var(--brick), 0 20px 60px rgba(0,0,0,.25);
-  font-family: "Inter Tight", sans-serif;
 }
 dialog::backdrop { background: rgba(28,22,20,.5); backdrop-filter: blur(2px); }
 dialog h3 {
-  font-family: "Fraunces", serif;
-  font-weight: 600;
-  font-size: 24px;
-  margin: 0 0 4px;
-  letter-spacing: -.01em;
+  font-family: "Fraunces", serif; font-weight: 600; font-size: 24px;
+  margin: 0 0 4px; letter-spacing: -.01em;
 }
 dialog .dialog-sub {
-  font-family: "Fraunces", serif;
-  font-style: italic;
-  font-size: 13px;
-  color: var(--muted);
-  margin-bottom: 18px;
+  font-family: "Fraunces", serif; font-style: italic;
+  font-size: 13px; color: var(--muted); margin-bottom: 18px;
 }
 dialog label {
-  display: block;
-  font-size: 11px;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 4px;
+  display: block; font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
 }
 dialog input {
-  width: 100%;
-  padding: 10px 12px;
-  margin-bottom: 14px;
-  border: 1px solid var(--rule);
-  background: var(--paper);
-  border-radius: 1px;
-  font-family: "Inter Tight", sans-serif;
-  font-size: 14px;
-  color: var(--ink);
+  width: 100%; padding: 10px 12px; margin-bottom: 14px;
+  border: 1px solid var(--rule); background: var(--paper); border-radius: 1px;
+  font-family: "Inter Tight", sans-serif; font-size: 14px; color: var(--ink);
 }
 dialog input:focus { outline: none; border-color: var(--brick); }
 dialog .row { display: flex; gap: 8px; justify-content: flex-end; }
 dialog button {
-  padding: 9px 16px;
-  border-radius: 1px;
-  border: 0;
-  cursor: pointer;
-  font-family: "Inter Tight", sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  padding: 9px 16px; border-radius: 1px; border: 0; cursor: pointer;
+  font-family: "Inter Tight", sans-serif; font-size: 12px; font-weight: 500;
+  letter-spacing: .1em; text-transform: uppercase;
 }
 .btn-secondary { background: transparent; border: 1px solid var(--rule); color: var(--ink); }
 .btn-secondary:hover { border-color: var(--ink); }
 .btn-primary { background: var(--brick); color: var(--paper); }
 .btn-primary:hover { background: var(--brick-deep); }
-.dialog-msg { font-size: 12px; margin-top: 10px; min-height: 16px; font-family: "Fraunces", serif; font-style: italic; }
+.dialog-msg {
+  font-size: 12px; margin-top: 10px; min-height: 16px;
+  font-family: "Fraunces", serif; font-style: italic;
+}
 .dialog-msg.error { color: var(--brick); }
 .dialog-msg.info { color: var(--muted); }
-
-/* MAP MARKER POPUP */
+ 
+/* LEAFLET POPUP STYLE */
 .leaflet-popup-content-wrapper {
   border-radius: 2px;
   background: var(--paper);
@@ -431,21 +287,27 @@ dialog button {
   font-family: "Inter Tight", sans-serif;
   font-size: 13px;
   margin: 12px 14px;
+  line-height: 1.5;
 }
 .leaflet-popup-content b {
   font-family: "Fraunces", serif;
   font-weight: 600;
   font-size: 15px;
 }
+.leaflet-popup-content a {
+  color: var(--brick);
+  text-decoration: none;
+  font-size: 12px;
+}
+.leaflet-popup-content a:hover { text-decoration: underline; }
 .leaflet-popup-tip { background: var(--paper); }
-
-/* MOBILE */
+.leaflet-container a.leaflet-popup-close-button { color: var(--muted); }
+ 
 @media (max-width: 760px) {
-  #app { grid-template-columns: 1fr; grid-template-rows: 55vh 45vh; }
+  #app { grid-template-columns: 1fr; grid-template-rows: auto 50vh; }
   #sidebar { border-right: 0; border-bottom: 1px solid var(--rule); padding: 20px; }
   #sidebar::after { width: 0; height: 4px; bottom: auto; right: 0; top: 0; left: 0; background: var(--brick); }
   h1 { font-size: 28px; }
-  #app { grid-template-rows: auto 50vh; }
   #map { min-height: 400px; }
 }
 </style>
@@ -456,42 +318,46 @@ dialog button {
     <div class="eyebrow">A field guide to</div>
     <h1>Boston, <em>on foot</em></h1>
     <div class="dateline">May 2026 · Three days</div>
-
+ 
     <div class="progress-wrap">
       <div class="progress"><div id="progress-bar"></div></div>
       <div class="progress-count" id="progress-count">0 / 13</div>
     </div>
-
+ 
     <div class="next-card">
       <div class="label">Up Next</div>
       <div class="name" id="next-name">—</div>
       <div class="meta" id="next-meta">—</div>
-      <button class="done-btn" id="mark-done">Mark as done</button>
+      <div class="next-actions">
+        <button class="btn-pill" id="mark-done">Mark as done</button>
+        <a class="btn-pill outline" id="next-directions" target="_blank" rel="noopener">Open in Maps ↗</a>
+      </div>
     </div>
-
+ 
     <div class="toggle">
       <button class="active" data-mode="foot">On foot</button>
       <button data-mode="driving">Driving</button>
     </div>
-
+ 
     <div class="section">
       <div class="section-title">The Itinerary</div>
       <div class="section-rule"></div>
     </div>
     <div id="stops-list"></div>
-
+ 
     <div class="section">
       <div class="section-title">Tables &amp; Taverns</div>
       <div class="section-rule"></div>
     </div>
     <div id="restaurants-list"></div>
     <button class="add-btn" id="add-restaurant">+ Add a Restaurant</button>
-
+ 
     <button class="reset-btn" id="reset-btn">Reset progress &amp; clear restaurants</button>
   </aside>
+ 
   <div id="map"></div>
 </div>
-
+ 
 <dialog id="restaurant-dialog">
   <h3>Add a Place</h3>
   <div class="dialog-sub">A spot worth marking on the map.</div>
@@ -505,17 +371,15 @@ dialog button {
   </div>
   <div class="dialog-msg" id="r-msg"></div>
 </dialog>
-
+ 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ===========================================================
-   Boston trip — edit STOPS to fine-tune any pin's coordinates.
-   The "Bourne" starting point is a placeholder — drop your
-   real address coordinates in there. (Hint: right-click any
-   spot on Google Maps → click the lat,lng to copy.)
-   =========================================================== */
+/* =========================================================================
+   STOPS — edit coordinates here if any pin lands wrong.
+   Tip: right-click a spot in Google Maps -> click the lat,lng to copy.
+   ========================================================================= */
 const STOPS = [
-  { name: "Bourne (start)",                    lat: 41.7399, lng: -70,5860, note: "Update with your starting address" },
+  { name: "Bourne (start)",                    lat: 41.7399, lng: -70.5860 },
   { name: "Isabella Stewart Gardner Museum",   lat: 42.3389, lng: -71.0995 },
   { name: "Christian Science Plaza",           lat: 42.3437, lng: -71.0857 },
   { name: "Newbury Street",                    lat: 42.3503, lng: -71.0810 },
@@ -529,14 +393,18 @@ const STOPS = [
   { name: "USS Constitution",                  lat: 42.3724, lng: -71.0563 },
   { name: "Harvard University",                lat: 42.3744, lng: -71.1169 }
 ];
-
-const STORAGE_KEY = "boston-trip-v1";
+ 
+const STORAGE_KEY = "boston-trip-v3";
+ 
+/* ===== STATE ===== */
 let state = loadState();
 let mode = state.mode || "foot";
-let map, stopMarkers = [], restaurantMarkers = [], pathLine;
-const legCache = {}; // key: "i-mode" -> seconds
-
-/* ---------- persistence ---------- */
+let map;
+let stopMarkers = [];
+let restaurantMarkers = [];
+let legPolylines = [];
+const legCache = {};   // key: `${i}-${mode}` -> { duration, path, fallback }
+ 
 function loadState() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { done: [], restaurants: [] }; }
   catch { return { done: [], restaurants: [] }; }
@@ -545,86 +413,12 @@ function saveState() {
   state.mode = mode;
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
 }
-
-/* ---------- map setup ---------- */
-function initMap() {
-  map = L.map("map", { zoomControl: true }).setView([42.36, -71.075], 13);
-  // Carto Voyager — softer, more illustrated than default OSM
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">Carto</a>',
-    subdomains: "abcd",
-    maxZoom: 19
-  }).addTo(map);
-
-  drawPath();
-  drawStops();
-  drawRestaurants();
-  fitBounds();
-}
-
-function numberedIcon(n, done, current) {
-  const bg = done ? "#4a6b3a" : current ? "#a83232" : "#f4ede0";
-  const fg = (done || current) ? "#f4ede0" : "#7d2222";
-  const ring = current ? "box-shadow:0 0 0 6px rgba(168,50,50,.2);" : "";
-  const label = done ? "✓" : n;
-  const html = `<div style="background:${bg};color:${fg};border:1.5px solid #7d2222;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:14px;${ring}">${label}</div>`;
-  return L.divIcon({ html, className: "", iconSize: [30, 30], iconAnchor: [15, 15] });
-}
-
-function restaurantIcon() {
-  const html = `<div style="background:#c79030;color:#1c1614;border:1.5px solid #1c1614;border-radius:2px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:13px;transform:rotate(-4deg);box-shadow:1px 2px 0 rgba(0,0,0,.3)">✦</div>`;
-  return L.divIcon({ html, className: "", iconSize: [24, 24], iconAnchor: [12, 12] });
-}
-
-function drawStops() {
-  stopMarkers.forEach(m => map.removeLayer(m));
-  stopMarkers = [];
-  const currentIdx = nextStopIndex();
-  STOPS.forEach((s, i) => {
-    const done = state.done.includes(i);
-    const m = L.marker([s.lat, s.lng], {
-      icon: numberedIcon(i + 1, done, i === currentIdx),
-      zIndexOffset: i === currentIdx ? 1000 : (done ? 0 : 100)
-    }).addTo(map).bindPopup(`<b>${i + 1}. ${s.name}</b>${s.note ? `<br><small><i>${s.note}</i></small>` : ""}`);
-    stopMarkers.push(m);
-  });
-}
-
-function drawPath() {
-  if (pathLine) map.removeLayer(pathLine);
-  const coords = STOPS.map(s => [s.lat, s.lng]);
-  pathLine = L.polyline(coords, {
-    color: "#a83232",
-    weight: 2.5,
-    opacity: .65,
-    dashArray: "2 8",
-    lineCap: "round"
-  }).addTo(map);
-}
-
-function drawRestaurants() {
-  restaurantMarkers.forEach(m => map.removeLayer(m));
-  restaurantMarkers = [];
-  state.restaurants.forEach(r => {
-    const m = L.marker([r.lat, r.lng], { icon: restaurantIcon() })
-      .addTo(map)
-      .bindPopup(`<b>${r.name}</b><br><small>${r.address}</small>`);
-    restaurantMarkers.push(m);
-  });
-}
-
-function fitBounds() {
-  const pts = STOPS.map(s => [s.lat, s.lng]).concat(state.restaurants.map(r => [r.lat, r.lng]));
-  const bounds = L.latLngBounds(pts);
-  map.fitBounds(bounds, { padding: [40, 40] });
-}
-
-/* ---------- routing ---------- */
+ 
+/* ===== HELPERS ===== */
 function nextStopIndex() {
   for (let i = 0; i < STOPS.length; i++) if (!state.done.includes(i)) return i;
   return -1;
 }
-
 function fmtTime(seconds) {
   if (seconds == null) return "—";
   const mins = Math.round(seconds / 60);
@@ -632,26 +426,19 @@ function fmtTime(seconds) {
   if (mins < 60) return `${mins} min`;
   return `${Math.floor(mins / 60)}h ${mins % 60}m`;
 }
-
-async function fetchLeg(i) {
-  const key = `${i}-${mode}`;
-  if (legCache[key] != null) return legCache[key];
-  const a = STOPS[i], b = STOPS[i + 1];
-  const url = `https://router.project-osrm.org/route/v1/${mode}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=false`;
-  try {
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.routes && data.routes[0]) {
-      legCache[key] = data.routes[0].duration;
-      return legCache[key];
-    }
-  } catch (e) { /* ignore, fall through */ }
-  // fallback: rough estimate by haversine distance
-  const km = haversine(a, b);
-  legCache[key] = km * (mode === "foot" ? 720 : 90);
-  return legCache[key];
+function osrmProfile()    { return mode === "foot" ? "walking" : "driving"; }
+function urlTravelMode()  { return mode === "foot" ? "walking" : "driving"; }
+ 
+function dirURLBetween(fromIdx, toIdx) {
+  const a = STOPS[fromIdx], b = STOPS[toIdx];
+  return `https://www.google.com/maps/dir/?api=1&origin=${a.lat},${a.lng}&destination=${b.lat},${b.lng}&travelmode=${urlTravelMode()}`;
 }
-
+function dirURLToPoint(lat, lng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=${urlTravelMode()}`;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
 function haversine(a, b) {
   const R = 6371;
   const dLat = (b.lat - a.lat) * Math.PI / 180;
@@ -660,62 +447,196 @@ function haversine(a, b) {
     + Math.cos(a.lat * Math.PI/180) * Math.cos(b.lat * Math.PI/180) * Math.sin(dLng/2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(x));
 }
-
-/* ---------- rendering ---------- */
-async function renderList() {
+ 
+/* ===== MARKERS ===== */
+function makeStopIcon(n, done, current) {
+  const bg = done ? "#4a6b3a" : current ? "#a83232" : "#f4ede0";
+  const fg = (done || current) ? "#f4ede0" : "#7d2222";
+  const stroke = done ? "#3a5a2c" : "#7d2222";
+  const ring = current ? "box-shadow:0 0 0 4px rgba(168,50,50,.2);" : "";
+  const size = current ? 32 : 28;
+  const label = done ? "✓" : n;
+  const html = `<div style="background:${bg};color:${fg};border:1.5px solid ${stroke};border-radius:50%;width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:14px;${ring}">${label}</div>`;
+  return L.divIcon({ html, className: "", iconSize: [size, size], iconAnchor: [size/2, size/2] });
+}
+ 
+function restaurantIcon() {
+  const html = `<div style="background:#c79030;color:#1c1614;border:1.5px solid #1c1614;border-radius:2px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;transform:rotate(-4deg);box-shadow:1px 2px 0 rgba(0,0,0,.3)">✦</div>`;
+  return L.divIcon({ html, className: "", iconSize: [22, 22], iconAnchor: [11, 11] });
+}
+ 
+function drawStops() {
+  stopMarkers.forEach(m => map.removeLayer(m));
+  stopMarkers = [];
+  const currentIdx = nextStopIndex();
+  STOPS.forEach((s, i) => {
+    const done = state.done.includes(i);
+    const isCurrent = i === currentIdx;
+    const marker = L.marker([s.lat, s.lng], {
+      icon: makeStopIcon(i + 1, done, isCurrent),
+      zIndexOffset: isCurrent ? 1000 : (done ? 0 : 100)
+    }).addTo(map);
+    const dirLink = i < STOPS.length - 1
+      ? `<br><a href="${dirURLBetween(i, i + 1)}" target="_blank" rel="noopener">→ Directions to ${escapeHtml(STOPS[i+1].name)} ↗</a>`
+      : "";
+    marker.bindPopup(`<b>${i + 1}. ${escapeHtml(s.name)}</b>${dirLink}`);
+    stopMarkers.push(marker);
+  });
+}
+ 
+function drawRestaurants() {
+  restaurantMarkers.forEach(m => map.removeLayer(m));
+  restaurantMarkers = [];
+  state.restaurants.forEach(r => {
+    const marker = L.marker([r.lat, r.lng], { icon: restaurantIcon() }).addTo(map);
+    marker.bindPopup(
+      `<b>${escapeHtml(r.name)}</b><br><span style="color:#7a6e62;font-size:12px">${escapeHtml(r.address)}</span><br><a href="${dirURLToPoint(r.lat, r.lng)}" target="_blank" rel="noopener">→ Directions ↗</a>`
+    );
+    restaurantMarkers.push(marker);
+  });
+}
+ 
+function fitBounds() {
+  const pts = STOPS.map(s => [s.lat, s.lng]).concat(state.restaurants.map(r => [r.lat, r.lng]));
+  const bounds = L.latLngBounds(pts);
+  map.fitBounds(bounds, { padding: [50, 50] });
+}
+ 
+/* ===== ROUTING (real road-following paths via OSRM) ===== */
+function clearLegPolylines() {
+  legPolylines.forEach(p => map.removeLayer(p));
+  legPolylines = [];
+}
+ 
+function drawLegPolyline(path, isFallback) {
+  const opts = {
+    color: "#a83232",
+    weight: 3,
+    opacity: isFallback ? 0.45 : 0.7,
+    lineCap: "round",
+    lineJoin: "round"
+  };
+  if (isFallback) opts.dashArray = "4 8";
+  legPolylines.push(L.polyline(path, opts).addTo(map));
+}
+ 
+async function loadLeg(i) {
+  const key = `${i}-${mode}`;
+  if (legCache[key]) {
+    drawLegPolyline(legCache[key].path, legCache[key].fallback);
+    return;
+  }
+  const a = STOPS[i], b = STOPS[i + 1];
+  const url = `https://router.project-osrm.org/route/v1/${osrmProfile()}/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.routes && data.routes[0]) {
+      const route = data.routes[0];
+      // GeoJSON is [lng, lat]; Leaflet wants [lat, lng]
+      const path = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+      legCache[key] = {
+        duration: route.duration,
+        path,
+        fallback: false
+      };
+      drawLegPolyline(path, false);
+      return;
+    }
+  } catch (e) { /* fall through */ }
+ 
+  // Fallback: straight dashed line + rough estimate
+  const km = haversine(a, b);
+  legCache[key] = {
+    duration: km * (mode === "foot" ? 720 : 90),
+    path: [[a.lat, a.lng], [b.lat, b.lng]],
+    fallback: true
+  };
+  drawLegPolyline(legCache[key].path, true);
+}
+ 
+async function loadAllLegs() {
+  clearLegPolylines();
+  const promises = [];
+  for (let i = 0; i < STOPS.length - 1; i++) promises.push(loadLeg(i));
+  await Promise.all(promises);
+  renderList();
+}
+ 
+/* ===== UI RENDER ===== */
+function renderList() {
   const list = document.getElementById("stops-list");
   list.innerHTML = "";
   const currentIdx = nextStopIndex();
-
+ 
   STOPS.forEach((s, i) => {
     const done = state.done.includes(i);
     const isCurrent = i === currentIdx;
     const div = document.createElement("div");
     div.className = `stop ${done ? "done" : ""} ${isCurrent ? "current" : ""}`;
+ 
+    const legInfo = legCache[`${i}-${mode}`];
+    const legText = (i < STOPS.length - 1)
+      ? (legInfo
+          ? `${fmtTime(legInfo.duration)} ${mode === "foot" ? "walk" : "drive"} to ${STOPS[i+1].name}${legInfo.fallback ? " (approx)" : ""}`
+          : "calculating…")
+      : "";
+ 
+    const legHTML = (i < STOPS.length - 1)
+      ? `<a class="leg" href="${dirURLBetween(i, i + 1)}" target="_blank" rel="noopener">${escapeHtml(legText)}</a>`
+      : `<span class="leg" style="opacity:.5">final stop</span>`;
+ 
     div.innerHTML = `
       <div class="num">${done ? "✓" : i + 1}</div>
       <div class="body">
-        <div class="name">${s.name}</div>
-        <div class="leg" id="leg-${i}"></div>
+        <div class="name">${escapeHtml(s.name)}</div>
+        ${legHTML}
       </div>
     `;
-    div.addEventListener("click", () => {
-      map.setView([s.lat, s.lng], 16, { animate: true });
-      stopMarkers[i].openPopup();
+ 
+    div.addEventListener("click", (e) => {
+      if (e.target.closest("a.leg")) return;
+      if (map) {
+        map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15), { animate: true });
+        if (stopMarkers[i]) stopMarkers[i].openPopup();
+      }
     });
-    div.addEventListener("dblclick", () => toggleDone(i));
+    div.addEventListener("dblclick", (e) => {
+      if (e.target.closest("a.leg")) return;
+      toggleDone(i);
+    });
     list.appendChild(div);
   });
-
-  // progress
+ 
   const pct = (state.done.length / STOPS.length) * 100;
   document.getElementById("progress-bar").style.width = pct + "%";
   document.getElementById("progress-count").textContent = `${state.done.length} / ${STOPS.length}`;
-
-  // next card
+ 
   const nextNameEl = document.getElementById("next-name");
   const nextMetaEl = document.getElementById("next-meta");
   const doneBtn = document.getElementById("mark-done");
+  const dirBtn = document.getElementById("next-directions");
+ 
   if (currentIdx === -1) {
     nextNameEl.textContent = "Trip complete";
     nextMetaEl.textContent = `All ${STOPS.length} stops checked off — well done.`;
     doneBtn.disabled = true;
     doneBtn.textContent = "All Done";
+    dirBtn.style.display = "none";
   } else {
-    nextNameEl.textContent = STOPS[currentIdx].name;
-    nextMetaEl.textContent = `Stop ${currentIdx + 1} of ${STOPS.length}`;
+    const next = STOPS[currentIdx];
+    nextNameEl.textContent = next.name;
+    const legInfo = currentIdx > 0 ? legCache[`${currentIdx - 1}-${mode}`] : null;
+    nextMetaEl.textContent = legInfo
+      ? `Stop ${currentIdx + 1} of ${STOPS.length} · ${fmtTime(legInfo.duration)} ${mode === "foot" ? "walk" : "drive"} from previous`
+      : `Stop ${currentIdx + 1} of ${STOPS.length}`;
     doneBtn.disabled = false;
     doneBtn.textContent = "Mark as done";
-  }
-
-  // populate leg times async
-  for (let i = 0; i < STOPS.length - 1; i++) {
-    const t = await fetchLeg(i);
-    const el = document.getElementById(`leg-${i}`);
-    if (el) el.textContent = `${fmtTime(t)} ${mode === "foot" ? "walk" : "drive"}`;
+    dirBtn.style.display = "inline-flex";
+    dirBtn.href = dirURLToPoint(next.lat, next.lng);
   }
 }
-
+ 
 function toggleDone(i) {
   const idx = state.done.indexOf(i);
   if (idx >= 0) state.done.splice(idx, 1);
@@ -724,7 +645,7 @@ function toggleDone(i) {
   drawStops();
   renderList();
 }
-
+ 
 function renderRestaurants() {
   const wrap = document.getElementById("restaurants-list");
   wrap.innerHTML = "";
@@ -740,7 +661,10 @@ function renderRestaurants() {
         <div class="r-name">${escapeHtml(r.name)}</div>
         <div class="r-addr">${escapeHtml(r.address)}</div>
       </div>
-      <button class="r-del" title="Remove" type="button">×</button>
+      <div class="r-actions">
+        <a class="r-dir" href="${dirURLToPoint(r.lat, r.lng)}" target="_blank" rel="noopener" title="Directions">↗</a>
+        <button class="r-del" type="button" title="Remove">×</button>
+      </div>
     `;
     div.querySelector(".r-del").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -749,17 +673,18 @@ function renderRestaurants() {
       drawRestaurants();
       renderRestaurants();
     });
-    div.addEventListener("click", () => map.setView([r.lat, r.lng], 16, { animate: true }));
+    div.querySelector(".r-dir").addEventListener("click", (e) => e.stopPropagation());
+    div.addEventListener("click", () => {
+      if (!map) return;
+      map.setView([r.lat, r.lng], Math.max(map.getZoom(), 16), { animate: true });
+      if (restaurantMarkers[i]) restaurantMarkers[i].openPopup();
+    });
     wrap.appendChild(div);
   });
 }
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-}
-
-/* ---------- geocoding ---------- */
-async function geocode(query) {
+ 
+/* ===== GEOCODING via OSM Nominatim ===== */
+async function geocodeAddress(query) {
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ", Boston, MA")}&limit=1`;
   try {
     const res = await fetch(url, { headers: { "Accept-Language": "en" } });
@@ -768,18 +693,19 @@ async function geocode(query) {
   } catch {}
   return null;
 }
-
-/* ---------- events ---------- */
+ 
+/* ===== EVENTS ===== */
 document.querySelectorAll(".toggle button").forEach(b => {
   b.addEventListener("click", () => {
     document.querySelectorAll(".toggle button").forEach(x => x.classList.remove("active"));
     b.classList.add("active");
     mode = b.dataset.mode;
     saveState();
+    loadAllLegs();
     renderList();
   });
 });
-
+ 
 document.getElementById("mark-done").addEventListener("click", () => {
   const i = nextStopIndex();
   if (i === -1) return;
@@ -788,7 +714,7 @@ document.getElementById("mark-done").addEventListener("click", () => {
   drawStops();
   renderList();
 });
-
+ 
 document.getElementById("add-restaurant").addEventListener("click", () => {
   document.getElementById("r-name").value = "";
   document.getElementById("r-address").value = "";
@@ -796,11 +722,11 @@ document.getElementById("add-restaurant").addEventListener("click", () => {
   msg.textContent = ""; msg.className = "dialog-msg";
   document.getElementById("restaurant-dialog").showModal();
 });
-
+ 
 document.getElementById("r-cancel").addEventListener("click", () => {
   document.getElementById("restaurant-dialog").close();
 });
-
+ 
 document.getElementById("r-save").addEventListener("click", async () => {
   const name = document.getElementById("r-name").value.trim();
   const address = document.getElementById("r-address").value.trim();
@@ -812,7 +738,7 @@ document.getElementById("r-save").addEventListener("click", async () => {
   }
   msg.textContent = "Looking up the address…";
   msg.className = "dialog-msg info";
-  const coords = await geocode(address);
+  const coords = await geocodeAddress(address);
   if (!coords) {
     msg.textContent = "Couldn't find that address. Try being more specific.";
     msg.className = "dialog-msg error";
@@ -824,7 +750,7 @@ document.getElementById("r-save").addEventListener("click", async () => {
   renderRestaurants();
   document.getElementById("restaurant-dialog").close();
 });
-
+ 
 document.getElementById("reset-btn").addEventListener("click", () => {
   if (!confirm("Clear all progress and remove all saved restaurants?")) return;
   state = { done: [], restaurants: [] };
@@ -834,14 +760,30 @@ document.getElementById("reset-btn").addEventListener("click", () => {
   renderList();
   renderRestaurants();
 });
-
-/* ---------- init ---------- */
-initMap();
-renderList();
-renderRestaurants();
+ 
 document.querySelectorAll(".toggle button").forEach(b => {
   b.classList.toggle("active", b.dataset.mode === mode);
 });
+ 
+/* ===== INIT ===== */
+function initMap() {
+  map = L.map("map", { zoomControl: true }).setView([42.1, -70.85], 9);
+  // Carto Voyager tiles — softer, more illustrated than vanilla OSM
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">Carto</a>',
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(map);
+ 
+  drawStops();
+  drawRestaurants();
+  loadAllLegs();
+  fitBounds();
+  renderList();
+  renderRestaurants();
+}
+ 
+initMap();
 </script>
 </body>
 </html>
